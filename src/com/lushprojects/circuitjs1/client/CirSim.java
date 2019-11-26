@@ -82,7 +82,6 @@ import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.ui.PopupPanel;
 import static com.google.gwt.event.dom.client.KeyCodes.*;
 import com.google.gwt.user.client.ui.Frame;
-import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.Widget;
 import com.google.gwt.user.client.Window.Navigator;
 
@@ -191,9 +190,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     CircuitElm plotXElm, plotYElm;
     int draggingPost;
     SwitchElm heldSwitchElm;
-    double circuitMatrix[][], circuitRightSide[], origRightSide[], origMatrix[][];
-    RowInfo circuitRowInfo[];
-    int circuitPermute[];
+    double[][] circuitMatrix, origMatrix;
+    double[] circuitRightSide, origRightSide;
+    RowInfo[] circuitRowInfo;
+    int[] circuitPermute;
     boolean simRunning;
     boolean circuitNonLinear;
     int voltageSourceCount;
@@ -201,9 +201,9 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     boolean circuitNeedsMap;
     // public boolean useFrame;
     int scopeCount;
-    Scope scopes[];
+    Scope[] scopes;
     boolean showResistanceInVoltageSources;
-    int scopeColCount[];
+    int[] scopeColCount;
     static EditDialog editDialog, customLogicEditDialog, diodeModelEditDialog;
     static SliderDialog sliderDialog;
     static ImportFromDropbox importFromDropbox;
@@ -212,14 +212,14 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     static AboutBox aboutBox;
     static ImportFromDropboxDialog importFromDropboxDialog;
     // Class dumpTypes[], shortcuts[];
-    String shortcuts[];
+    String[] shortcuts;
     static String muString = "\u03bc";
     static String ohmString = "\u03a9";
     String clipboard;
     String recovery;
     Rectangle circuitArea;
     Vector<String> undoStack, redoStack;
-    double transform[];
+    double[] transform;
 
     DockLayoutPanel layoutPanel;
     MenuBar menuBar;
@@ -243,18 +243,17 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     static int VERTICALPANELWIDTH = 166; // default
     static final int POSTGRABSQ = 25;
     static final int MINPOSTGRABSIZE = 256;
+    
     final Timer timer = new Timer() {
 	public void run() {
 	    updateCircuit();
 	}
     };
+    
     final int FASTTIMER = 16;
 
     int getrand(int x) {
-	int q = random.nextInt();
-	if (q < 0)
-	    q = -q;
-	return q % x;
+	return random.nextInt(x);
     }
 
     public void setCanvasSize() {
@@ -1334,20 +1333,14 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	frames++;
 
 	g.setColor(Color.white);
-	// g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10,
-	// 10);
-	// g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, 30);
-	// g.drawString("Steprate/iter: " +
-	// CircuitElm.showFormat.format(steprate/getIterCount()), 10, 50);
-	// g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10,
-	// 70);
-	// g.drawString("Frames: "+ frames,10,90);
-	// g.drawString("ms per frame (other): "+
-	// CircuitElm.showFormat.format((mytime-myruntime-mydrawtime)/myframes),10,110);
-	// g.drawString("ms per frame (sim): "+
-	// CircuitElm.showFormat.format((myruntime)/myframes),10,130);
-	// g.drawString("ms per frame (draw): "+
-	// CircuitElm.showFormat.format((mydrawtime)/myframes),10,150);
+	g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, 10);
+	g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, 30);
+//	g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate/getIterCount()), 10, 50);
+//	g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, 70);
+//	g.drawString("Frames: " + frames,10, 90);
+	g.drawString("ms per frame (other): " + CircuitElm.showFormat.format((mytime-myruntime-mydrawtime)/myframes),10,110);
+	g.drawString("ms per frame (sim): " + CircuitElm.showFormat.format((myruntime)/myframes),10,130);
+	g.drawString("ms per frame (draw): " + CircuitElm.showFormat.format((mydrawtime)/myframes),10,150);
 
 	cvcontext.drawImage(backcontext.getCanvas(), 0.0, 0.0);
 
@@ -1364,12 +1357,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     }
 
     void setupScopes() {
-	int i;
-
 	// check scopes to make sure the elements still exist, and remove
 	// unused scopes/columns
 	int pos = -1;
-	for (i = 0; i < scopeCount; i++) {
+	for (int i = 0; i < scopeCount; i++) {
 	    if (scopes[i].needToRemove()) {
 		int j;
 		for (j = i; j != scopeCount; j++)
@@ -1386,9 +1377,9 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	    scopeCount--;
 	int h = cv.getCoordinateSpaceHeight() - circuitArea.height;
 	pos = 0;
-	for (i = 0; i != scopeCount; i++)
+	for (int i = 0; i != scopeCount; i++)
 	    scopeColCount[i] = 0;
-	for (i = 0; i != scopeCount; i++) {
+	for (int i = 0; i != scopeCount; i++) {
 	    pos = max(scopes[i].position, pos);
 	    scopeColCount[scopes[i].position]++;
 	}
@@ -1404,7 +1395,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	int colh = 0;
 	int row = 0;
 	int speed = 0;
-	for (i = 0; i != scopeCount; i++) {
+	for (int i = 0; i != scopeCount; i++) {
 	    Scope s = scopes[i];
 	    if (s.position > pos) {
 		pos = s.position;
@@ -1478,22 +1469,6 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	return null;
     }
 
-    // public void toggleSwitch(int n) {
-    // int i;
-    // for (i = 0; i != elmList.size(); i++) {
-    // CircuitElm ce = getElm(i);
-    // if (ce instanceof SwitchElm) {
-    // n--;
-    // if (n == 0) {
-    // ((SwitchElm) ce).toggle();
-    // analyzeFlag = true;
-    // cv.repaint();
-    // return;
-    // }
-    // }
-    // }
-    // }
-
     void needAnalyze() {
 	analyzeFlag = true;
 	repaint();
@@ -1535,7 +1510,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 		debugger;
     }-*/;
 
-    class NodeMapEntry {
+    static class NodeMapEntry {
 	int node;
 
 	NodeMapEntry() {
@@ -1551,7 +1526,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     HashMap<Point, NodeMapEntry> nodeMap;
     HashMap<Point, Integer> postCountMap;
 
-    class WireInfo {
+    static class WireInfo {
 	WireElm wire;
 	Vector<CircuitElm> neighbors;
 	int post;
@@ -1569,7 +1544,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     // up considerably by reducing the size of the matrix
     void calculateWireClosure() {
 	int i;
-	nodeMap = new HashMap<Point, NodeMapEntry>();
+	nodeMap = new HashMap<Point, NodeMapEntry>(elmList.size() * 2);
 	// int mergeCount = 0;
 	wireInfoList = new Vector<WireInfo>();
 	for (i = 0; i != elmList.size(); i++) {
@@ -2590,11 +2565,11 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	}
     }
 
-    int min(int a, int b) {
+    static int min(int a, int b) {
 	return (a < b) ? a : b;
     }
 
-    int max(int a, int b) {
+    static int max(int a, int b) {
 	return (a > b) ? a : b;
     }
 
@@ -4507,15 +4482,14 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     // gaussian elimination. On entry, a[0..n-1][0..n-1] is the
     // matrix to be factored. ipvt[] returns an integer vector of pivot
     // indices, used in the lu_solve() routine.
-    static boolean lu_factor(double a[][], int n, int ipvt[]) {
-	int i, j, k;
-
+    static boolean lu_factor(double[][] a, int n, int[] ipvt) {
 	// check for a possible singular matrix by scanning for rows that
 	// are all zeroes
-	for (i = 0; i != n; i++) {
+	for (int i = 0; i != n; i++) {
 	    boolean row_all_zeros = true;
-	    for (j = 0; j != n; j++) {
-		if (a[i][j] != 0) {
+	    double[] row = a[i];
+	    for (int j = 0; j != n; j++) {
+		if (row[j] != 0) {
 		    row_all_zeros = false;
 		    break;
 		}
@@ -4526,43 +4500,46 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	}
 
 	// use Crout's method; loop through the columns
-	for (j = 0; j != n; j++) {
-
+	for (int j = 0; j != n; j++) {
 	    // calculate upper triangular elements for this column
-	    for (i = 0; i != j; i++) {
-		double q = a[i][j];
-		for (k = 0; k != i; k++)
-		    q -= a[i][k] * a[k][j];
-		a[i][j] = q;
+	    for (int i = 0; i != j; i++) {
+		double[] rowI = a[i];
+		double q = rowI[j];
+		for (int k = 0; k != i; k++)
+		    q -= rowI[k] * a[k][j];
+		rowI[j] = q;
 	    }
 
 	    // calculate lower triangular elements for this column
 	    double largest = 0;
-	    int largestRow = -1;
-	    for (i = j; i != n; i++) {
-		double q = a[i][j];
-		for (k = 0; k != j; k++)
-		    q -= a[i][k] * a[k][j];
-		a[i][j] = q;
+	    int largestRowIdx = -1;
+	    for (int i = j; i != n; i++) {
+		double[] rowI = a[i];
+		double q = rowI[j];
+		for (int k = 0; k != j; k++)
+		    q -= rowI[k] * a[k][j];
+		rowI[j] = q;
 		double x = Math.abs(q);
 		if (x >= largest) {
 		    largest = x;
-		    largestRow = i;
+		    largestRowIdx = i;
 		}
 	    }
 
 	    // pivoting
-	    if (j != largestRow) {
+	    if (j != largestRowIdx) {
+		double[] largestRow = a[largestRowIdx];
+		double[] rowJ = a[j];
 		double x;
-		for (k = 0; k != n; k++) {
-		    x = a[largestRow][k];
-		    a[largestRow][k] = a[j][k];
-		    a[j][k] = x;
+		for (int k = 0; k != n; k++) {
+		    x = largestRow[k];
+		    largestRow[k] = rowJ[k];
+		    rowJ[k] = x;
 		}
 	    }
 
 	    // keep track of row interchanges
-	    ipvt[j] = largestRow;
+	    ipvt[j] = largestRowIdx;
 
 	    // avoid zeros
 	    if (a[j][j] == 0.0) {
@@ -4572,7 +4549,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 
 	    if (j != n - 1) {
 		double mult = 1.0 / a[j][j];
-		for (i = j + 1; i != n; i++)
+		for (int i = j + 1; i != n; i++)
 		    a[i][j] *= mult;
 	    }
 	}
@@ -4582,7 +4559,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     // Solves the set of n linear equations using a LU factorization
     // previously performed by lu_factor. On input, b[0..n-1] is the right
     // hand side of the equations, and on output, contains the solution.
-    static void lu_solve(double a[][], int n, int ipvt[], double b[]) {
+    static void lu_solve(double[][] a, int n, int[] ipvt, double[] b) {
 	int i;
 
 	// find first nonzero b element
@@ -4599,23 +4576,23 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	int bi = i++;
 	for (; i < n; i++) {
 	    int row = ipvt[i];
-	    int j;
 	    double tot = b[row];
 
 	    b[row] = b[i];
 	    // forward substitution using the lower triangular matrix
-	    for (j = bi; j < i; j++)
-		tot -= a[i][j] * b[j];
+	    double[] rowI = a[i];
+	    for (int j = bi; j < i; j++)
+		tot -= rowI[j] * b[j];
 	    b[i] = tot;
 	}
 	for (i = n - 1; i >= 0; i--) {
 	    double tot = b[i];
+	    double[] rowI = a[i];
 
 	    // back-substitution using the upper triangular matrix
-	    int j;
-	    for (j = i + 1; j != n; j++)
-		tot -= a[i][j] * b[j];
-	    b[i] = tot / a[i][i];
+	    for (int j = i + 1; j != n; j++)
+		tot -= rowI[j] * b[j];
+	    b[i] = tot / rowI[i];
 	}
     }
 
