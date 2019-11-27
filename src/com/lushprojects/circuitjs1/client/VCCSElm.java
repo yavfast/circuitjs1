@@ -115,7 +115,7 @@ package com.lushprojects.circuitjs1.client;
             double convergeLimit = getConvergeLimit();
             for (i = 0; i != inputCount; i++) {
         	if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit)
-        	    sim.converged = false;
+    			sim.noConverged(this);
         	if (Double.isNaN(volts[i]))
         	    volts[i] = 0;
         	if (Math.abs(volts[i]-lastVolts[i]) > limitStep)

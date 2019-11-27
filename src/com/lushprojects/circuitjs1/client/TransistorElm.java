@@ -173,7 +173,7 @@ package com.lushprojects.circuitjs1.client;
 		} else {
 		    vnew = vt *Math.log(vnew/vt);
 		}
-		sim.converged = false;
+		sim.noConverged(this, vnew + " " + vold);
 		//System.out.println(vnew + " " + oo + " " + vold);
 	    }
 	    return(vnew);
@@ -188,7 +188,7 @@ package com.lushprojects.circuitjs1.client;
 	    double vbe = volts[0]-volts[2]; // typically positive
 	    if (Math.abs(vbc-lastvbc) > .01 || // .01
 		Math.abs(vbe-lastvbe) > .01)
-		sim.converged = false;
+		sim.noConverged(this, vbc + " " + lastvbc + "; " + vbe + " " + lastvbe);
 	    // To prevent a possible singular matrix, put a tiny conductance in parallel
 	    // with each P-N junction.
 	    gmin = leakage * 0.01;

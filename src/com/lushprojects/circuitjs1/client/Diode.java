@@ -102,7 +102,7 @@ class Diode {
 		// (1/vscale = slope of load line)
 		vnew = vscale *Math.log(vnew/vscale);
 	    }
-	    sim.converged = false;
+    		sim.noConverged(this);
 	    //System.out.println(vnew + " " + oo + " " + vold);
 	} else if (vnew < 0 && zoffset != 0) {
 	    // for Zener breakdown, use the same logic but translate the values,
@@ -123,7 +123,7 @@ class Diode {
 		} else {
 		    vnew = vt *Math.log(vnew/vt);
 		}
-		sim.converged = false;
+		sim.noConverged(this);
 	    }
 	    vnew = -(vnew+zoffset);
 	}
@@ -140,7 +140,7 @@ class Diode {
     void doStep(double voltdiff) {
 	// used to have .1 here, but needed .01 for peak detector
 	if (Math.abs(voltdiff-lastvoltdiff) > .01)
-	    sim.converged = false;
+		sim.noConverged(this);
 	voltdiff = limitStep(voltdiff, lastvoltdiff);
 	lastvoltdiff = voltdiff;
 

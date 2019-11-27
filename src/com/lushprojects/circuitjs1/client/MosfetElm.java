@@ -365,7 +365,7 @@ package com.lushprojects.circuitjs1.client;
 	    double vgs = vs[gate ]-vs[source];
 	    double vds = vs[drain]-vs[source];
 	    if (!finished && (nonConvergence(lastv1, vs[1]) || nonConvergence(lastv2, vs[2]) || nonConvergence(lastv0, vs[0])))
-		sim.converged = false;
+		sim.noConverged(this);
 	    lastv0 = vs[0];
 	    lastv1 = vs[1];
 	    lastv2 = vs[2];

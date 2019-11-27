@@ -75,7 +75,7 @@ package com.lushprojects.circuitjs1.client;
             
             double cur = pins[1].current;
             if (Math.abs(cur-lastCurrent) > convergeLimit) {
-        	sim.converged = false;
+        	sim.noConverged(this);
 //        	if (Math.abs(cur-lastCurrent) > limitStep)
 //        	    volts[i] = lastVolts[i] + sign(volts[i]-lastVolts[i], limitStep);
             }

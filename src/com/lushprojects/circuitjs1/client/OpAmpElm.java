@@ -149,9 +149,9 @@ package com.lushprojects.circuitjs1.client;
 	void doStep() {
 	    double vd = volts[1] - volts[0];
 	    if (Math.abs(lastvd-vd) > .1)
-		sim.converged = false;
+		sim.noConverged(this);
 	    else if (volts[2] > maxOut+.1 || volts[2] < minOut-.1)
-		sim.converged = false;
+		sim.noConverged(this);
 	    double x = 0;
 	    int vn = sim.nodeList.size()+voltSource;
 	    double dx = 0;

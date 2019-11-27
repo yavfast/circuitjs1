@@ -64,7 +64,7 @@ package com.lushprojects.circuitjs1.client;
             double convergeLimit = getConvergeLimit();
             for (i = 0; i != inputCount; i++) {
         	if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit)
-        	    sim.converged = false;
+    			sim.noConverged(this);
         	if (Double.isNaN(volts[i]))
         	    volts[i] = 0;
         	if (Math.abs(volts[i]-lastVolts[i]) > limitStep)
@@ -78,7 +78,7 @@ package com.lushprojects.circuitjs1.client;
         	exprState.t = sim.t;
         	double v0 = expr.eval(exprState);
         	if (Math.abs(volts[inputCount]-volts[inputCount+1]-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
-        	    sim.converged = false;
+        	    sim.noConverged(this);
         	double rs = v0;
         	
         	// calculate and stamp output derivatives
