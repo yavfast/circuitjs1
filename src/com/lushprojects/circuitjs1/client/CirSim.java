@@ -1480,14 +1480,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     CircuitElm voltageSources[];
 
     public CircuitNode getCircuitNode(int n) {
-	if (n >= nodeList.size())
-	    return null;
 	return nodeList.elementAt(n);
     }
 
     public CircuitElm getElm(int n) {
-	if (n >= elmList.size())
-	    return null;
 	return elmList.elementAt(n);
     }
 
@@ -1940,10 +1936,12 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	// if a matrix is linear, we can do the lu_factor here instead of
 	// needing to do it every frame
 	if (!circuitNonLinear) {
-	    if (!lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute)) {
+	    if (isSingularMatrix(circuitMatrix, circuitMatrixSize)) {
 		stop("Singular matrix!", null);
 		return;
 	    }
+
+	    lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
 	}
 
 	// show resistance in voltage sources if there's only one
@@ -2063,11 +2061,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	circuitMatrix = newmatx;
 	circuitRightSide = newrs;
 	matrixSize = circuitMatrixSize = newsize;
-	for (i = 0; i != matrixSize; i++)
-	    origRightSide[i] = circuitRightSide[i];
-	for (i = 0; i != matrixSize; i++)
-	    for (j = 0; j != matrixSize; j++)
-		origMatrix[i][j] = circuitMatrix[i][j];
+	
+	copy(circuitRightSide, origRightSide, matrixSize);
+	copy(circuitMatrix, origMatrix, matrixSize);
+
 	circuitNeedsMap = true;
 	return true;
     }
@@ -2382,8 +2379,18 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     }
 
     public void noConverged(Object ce, String msg) {
-	console("noConverged: " + ce.getClass().getName() + (msg != null ? " " + msg : ""));
+//	console("noConverged: " + ce.getClass().getName() + (msg != null ? " " + msg : ""));
 	converged = false;
+    }
+    
+    public boolean isConverged(double v1, double v2) {
+	double delta = Math.abs(v2 - v1);
+	double mean = Math.abs((v1 + v2) / 2.0);
+	if (mean > 0.0) {
+	    double e = delta / mean;
+	    return e < 0.01; // < 1%
+	}
+	return true;
     }
     
     static void copy(double[] src, double[] dst, int size) {
@@ -2482,10 +2489,12 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 		    if (converged && subiter > 0)
 			break;
 		    
-		    if (!lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute)) {
+		    if (isSingularMatrix(circuitMatrix, circuitMatrixSize)) {
 			stop("Singular matrix!", null);
 			return;
 		    }
+
+		    lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
 		}
 		
 		lu_solve(circuitMatrix, circuitMatrixSize, circuitPermute, circuitRightSide);
@@ -4357,24 +4366,20 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     }
 
     void clearSelection() {
-	int i;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
+	for (CircuitElm ce : elmList) {
 	    ce.setSelected(false);
 	}
     }
 
     void doSelectAll() {
-	int i;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
+	for (CircuitElm ce : elmList) {
 	    ce.setSelected(true);
 	}
     }
 
     boolean anySelectedButMouse() {
-	for (int i = 0; i != elmList.size(); i++)
-	    if (getElm(i) != mouseElm && getElm(i).selected)
+	for (CircuitElm ce : elmList)
+	    if (ce != mouseElm && ce.selected)
 		return true;
 	return false;
     }
@@ -4508,27 +4513,27 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	}
     }
 
+    static boolean isSingularMatrix(double[][] a, int n) {
+	// check for a possible singular matrix by scanning for rows that
+	// are all zeroes
+	for (int i = 0; i != n; i++) {
+	    double[] row = a[i];
+	    for (int j = 0; j != n; j++) {
+		if (row[j] != 0.0) {
+		    return false;
+		}
+	    }
+	}
+	
+	// if all zeros, it's a singular matrix
+	return true;
+    }
+    
     // factors a matrix into upper and lower triangular matrices by
     // gaussian elimination. On entry, a[0..n-1][0..n-1] is the
     // matrix to be factored. ipvt[] returns an integer vector of pivot
     // indices, used in the lu_solve() routine.
-    static boolean lu_factor(double[][] a, int n, int[] ipvt) {
-	// check for a possible singular matrix by scanning for rows that
-	// are all zeroes
-	for (int i = 0; i != n; i++) {
-	    boolean row_all_zeros = true;
-	    double[] row = a[i];
-	    for (int j = 0; j != n; j++) {
-		if (row[j] != 0) {
-		    row_all_zeros = false;
-		    break;
-		}
-	    }
-	    // if all zeros, it's a singular matrix
-	    if (row_all_zeros)
-		return false;
-	}
-
+    static void lu_factor(double[][] a, int n, int[] ipvt) {
 	// use Crout's method; loop through the columns
 	for (int j = 0; j != n; j++) {
 	    // calculate upper triangular elements for this column
@@ -4583,7 +4588,6 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 		    a[i][j] *= mult;
 	    }
 	}
-	return true;
     }
 
     // Solves the set of n linear equations using a LU factorization
@@ -5088,9 +5092,8 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     }
 
     public void updateModels() {
-	int i;
-	for (i = 0; i != elmList.size(); i++)
-	    elmList.get(i).updateModels();
+	for (CircuitElm elm : elmList)
+	    elm.updateModels();
     }
 
     native boolean weAreInUS() /*-{
@@ -5147,8 +5150,6 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     void dumpNodelist() {
 
 	CircuitNode nd;
-	CircuitElm e;
-	int i, j;
 	String s;
 	String cs;
 	//
@@ -5161,8 +5162,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	// console(s);
 	// }
 	console("Elm list Dump");
-	for (i = 0; i < elmList.size(); i++) {
-	    e = elmList.get(i);
+	for (CircuitElm e : elmList) {
 	    cs = e.getDumpClass().toString();
 	    int p = cs.lastIndexOf('.');
 	    cs = cs.substring(p + 1);
@@ -5177,7 +5177,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 		    cs = "NTransistorElm";
 	    }
 	    s = cs;
-	    for (j = 0; j < e.getPostCount(); j++) {
+	    for (int j = 0; j < e.getPostCount(); j++) {
 		s = s + " " + e.nodes[j];
 	    }
 	    console(s);
@@ -5256,12 +5256,11 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	context.translate(transform[4], transform[5]);
 
 	// draw elements
-	int i;
-	for (i = 0; i != elmList.size(); i++) {
-	    getElm(i).draw(g);
+	for (CircuitElm ce : elmList) {
+	    ce.draw(g);
 	}
-	for (i = 0; i != postDrawList.size(); i++) {
-	    CircuitElm.drawPost(g, postDrawList.get(i));
+	for (Point point : postDrawList) {
+	    CircuitElm.drawPost(g, point);
 	}
 
 	// restore everything
@@ -5272,14 +5271,13 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     }
 
     boolean isSelection() {
-	for (int i = 0; i != elmList.size(); i++)
-	    if (getElm(i).isSelected())
+	for (CircuitElm ce : elmList)
+	    if (ce.isSelected())
 		return true;
 	return false;
     }
 
     public CustomCompositeModel getCircuitAsComposite() {
-	int i;
 	String nodeList = "";
 	String dump = "";
 	// String models = "";
@@ -5296,8 +5294,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	HashMap<Integer, Integer> nodeNumberHash = new HashMap<Integer, Integer>();
 
 	// find all the labeled nodes, get a list of them, and create a node number map
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
+	for (CircuitElm ce : elmList) {
 	    if (sel && !ce.isSelected())
 		continue;
 	    if (ce instanceof LabeledNodeElm) {
@@ -5328,8 +5325,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	}
 
 	// output all the elements
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
+	for (CircuitElm ce : elmList) {
 	    if (sel && !ce.isSelected())
 		continue;
 	    // don't need these elements dumped
@@ -5337,11 +5333,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 		continue;
 	    if (ce instanceof GraphicElm)
 		continue;
-	    int j;
 	    if (nodeList.length() > 0)
 		nodeList += "\r";
 	    nodeList += ce.getClass().getSimpleName();
-	    for (j = 0; j != ce.getPostCount(); j++) {
+	    for (int j = 0; j != ce.getPostCount(); j++) {
 		int n = ce.getNode(j);
 		Integer nobj = nodeNumberHash.get(n);
 		int n0 = (nobj == null) ? n : nobj;
@@ -5377,26 +5372,31 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	return ccm;
     }
 
-    static void invertMatrix(double a[][], int n) {
-	int ipvt[] = new int[n];
+    static void clear(double[] array, int size) {
+	for (int j = 0; j != size; j++)
+	    array[j] = 0.0;
+    }
+    
+    static void invertMatrix(double[][] a, int n) {
+	int[] ipvt = new int[n];
+	
 	lu_factor(a, n, ipvt);
-	int i, j;
-	double b[] = new double[n];
-	double inva[][] = new double[n][n];
+	
+	double[] b = new double[n];
+	double[][] inva = new double[n][n];
 
 	// solve for each column of identity matrix
-	for (i = 0; i != n; i++) {
-	    for (j = 0; j != n; j++)
-		b[j] = 0;
+	for (int i = 0; i != n; i++) {
+	    clear(b, n);
+
 	    b[i] = 1;
 	    lu_solve(a, n, ipvt, b);
-	    for (j = 0; j != n; j++)
+	    
+	    for (int j = 0; j != n; j++)
 		inva[j][i] = b[j];
 	}
 
 	// return in original matrix
-	for (i = 0; i != n; i++)
-	    for (j = 0; j != n; j++)
-		a[i][j] = inva[i][j];
+	copy(inva, a, n);
     }
 }
