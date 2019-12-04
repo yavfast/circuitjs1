@@ -250,7 +250,7 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 	}
     };
     
-    final int FASTTIMER = 16;
+    final int FASTTIMER = 17;
 
     int getrand(int x) {
 	return random.nextInt(x);
@@ -1340,9 +1340,9 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
 //	g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate/getIterCount()), 10, 50);
 //	g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, 70);
 //	g.drawString("Frames: " + frames,10, 90);
-	g.drawString("ms per frame (other): " + CircuitElm.showFormat.format((mytime-myruntime-mydrawtime)/myframes),10,110);
-	g.drawString("ms per frame (sim): " + CircuitElm.showFormat.format((myruntime)/myframes),10,130);
-	g.drawString("ms per frame (draw): " + CircuitElm.showFormat.format((mydrawtime)/myframes),10,150);
+//	g.drawString("ms per frame (other): " + CircuitElm.showFormat.format((mytime-myruntime-mydrawtime)/myframes),10,110);
+//	g.drawString("ms per frame (sim): " + CircuitElm.showFormat.format((myruntime)/myframes),10,130);
+//	g.drawString("ms per frame (draw): " + CircuitElm.showFormat.format((mydrawtime)/myframes),10,150);
 
 	cvcontext.drawImage(backcontext.getCanvas(), 0.0, 0.0);
 
@@ -2581,19 +2581,10 @@ public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandle
     // currents,
     // we need to calculate them now.
     void calcWireCurrents() {
-	int i;
-
-	// for debugging
-	// for (i = 0; i != wireInfoList.size(); i++)
-	// wireInfoList.get(i).wire.setCurrent(-1, 1.23);
-
-	for (i = 0; i != wireInfoList.size(); i++) {
-	    WireInfo wi = wireInfoList.get(i);
+	for (WireInfo wi : wireInfoList) {
 	    double cur = 0;
-	    int j;
 	    Point p = wi.wire.getPost(wi.post);
-	    for (j = 0; j != wi.neighbors.size(); j++) {
-		CircuitElm ce = wi.neighbors.get(j);
+	    for (CircuitElm ce : wi.neighbors) {
 		int n = ce.getNodeAtPoint(p.x, p.y);
 		cur += ce.getCurrentIntoNode(n);
 	    }
